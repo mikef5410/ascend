@@ -1,0 +1,112 @@
+This is MBLOAD, a Multiband/Pipeline code loader based upon a public domain
+xmodem program retrieved from the net.
+
+Compiling the software:
+
+  The software compiles and runs on SunOS 4.1.x.  It probably will work on
+  other BSD UNIX variants.  To compile for a System V machine (last tested
+  with System V Release 3.2) do the following:
+
+	mv getput.c getput.bsd.c
+	mv getput.sysv.c getput.c
+	make
+
+  An ANSI C compiler, gcc is selected by the Makefile, is required.  Or you
+  can un-protoize the functions in mbload.c and newsend.c (about 4
+  functions) and use your traditional C compiler.
+
+Running tip:
+
+  The program is usually run under tip.  This is the setup used at dumbcat,
+  a SPARCstation 2 using ttyb connected to the multiband serial port.
+  Setup on the Sparc is:
+
+    In /dev:
+
+	crw-rw-rw-  2 root     wheel     12,   1 Oct 12 16:04 /dev/ttyb
+	crw-rw-rw-  1 uucp     uucp      12, 129 Oct 14 09:47 /dev/cua2
+
+    In /etc/remote:
+
+	#
+	# Entries for ttyb.  This is connected to the console port of a
+	# multiband.  Several bit rates are supported.  The default rate
+	# is 38400.
+	#
+	multiband:\
+	        :dv=/dev/cua2:
+	mb:\
+        	:br#38400:tc=multiband:
+	mb19:\
+        	:br#19200:tc=multiband:
+	mb96:\
+        	:br#9600:tc=multiband:
+	mb24:\
+        	:br#2400:tc=multiband:
+	mb56:\
+        	:br#57600:tc=multiband:
+
+  The Multiband/Pipeline assumes it is talking to a vt100 (or an xterm), so
+  it is best to run tip in a 24x80 xterm window.  The command I use
+  (available from a mouse button) is:
+
+	xterm -title VT100-MB -font fixed -rv -e tip mb&
+
+
+Basic MBLOAD:
+
+  The command line syntax is:
+
+	mbload [-e[p]|n] [-s speed] file
+
+  The options are:
+
+	-e		Send escape sequence to get into the downloader
+
+	-ep		Send the Multiband PLUS version of the escape sequence.
+
+	-n		Send the NINDY version of the escape sequence
+
+	-s speed	Set the bit rate of stdin and stdout to the
+			specified speed.  If not specified, the current
+			bit rate is used.
+
+
+Running MBLOAD inside tip:
+
+  Example: To download a Pipeline from within tip use the tip command
+  "<return>~c" to cd to the directory containing the file to download.
+  The use the command "<return>~C".  Tip will respond with the string
+  "Local command?".  Respond with
+
+	mbload -e mp1t1.bin
+
+  Mbload will respond with:
+
+	MBLOAD Version 5.0
+	File mp1t1.bin
+	Ready to SEND at current bit rate
+	Estimated File Size 946K (967680 Bytes)
+	CRC mode requested
+	1K byte packets
+	block 00001 r r r r r
+
+  The Multiband and Pipeline does not erase its flash eeprom until the first
+  block is received.  This typically takes a minute.  The "r" in the above
+  display signifies a retry.  This is normal operation.  Once the flashed
+  is erased the upload will continue at line speeds.
+
+
+Running MBLOAD standalone:
+
+  mbload can be run from the command line.  However, stdin and stdout must
+  be redirected to the port connected to the Multiband/Pipeline and the
+  speed will usually have to be set.  Example:
+
+	mbload -s 38400 -n mp1t1/mp1t1.bin < /dev/cua2 > /dev/cua2
+
+
+Questions or Comments:
+
+  Send questions/comments to marc@ascend.com.
+

@@ -1,0 +1,43 @@
+1/8/96
+
+Bootrom debug mode is entered with 'ESC [ ESC - ' rather than 
+'ESC [ ESC =' used for firmware download.
+
+
+8/6/94
+
+chap password is beep0102
+
+mbload now works w/ HPUX:
+My work 735 uses /dev/tty00 for modem line.
+crw-------   1 root     sys        1 0x204004 Mar  8 16:10 /dev/tty00
+
+cu to the box and set the speed to 57600.
+Then, in cu, type <CR>~$stty 57600 <&1
+try a repaint (^L).
+
+If that doesn't work ... exit cu (~.), and re-enter
+make sure everything's working at 57600
+
+Use Xterm's file logging to save config
+To download saved conf: ~$cat ConfFile
+
+
+Of course, if it's not, you can always drop the speed. S300's only
+reliably work up to 9600, some 400's make it to 57600 and 700's do
+fine at 460kbaud. Top speed for a pipe-50 is 57600, and I've burned
+new firmware in my home box at that rate.
+
+exit cu
+
+type ./mbload -e -s 57600 firmwarefile </dev/cul00 >/dev/cul00
+
+(use /dev/tty00 at work).
+
+watch it run.
+
+The speed will probably be reset to 9600 by the new firmware.
+
+-mike ferrara
+mikef@sr.hp.com
+577-4479
