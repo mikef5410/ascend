@@ -1,0 +1,235 @@
+
+2nd ISP setup on a Pipe-50   Mike Ferrara, Nov 1996
+
+1) Ethernet/Connections ...
+    setup all of the obvious stuff. Note ... to 
+    get 64K connects, use 10-digit number, like 17075370709
+    In order for chap authentication to work, the Station names must
+    match precisely.
+
+2) Ethernet/Static Rtes
+    Make the default route the ISP
+    make another route called HP-Inet that routes 15.0.0.0/8 to
+    the HP ascend box.
+
+3) Ethernet/Mod config:
+    Set a Telnet PW !
+    
+4) Ethernet/Mod config/Ether Options ...
+    Set the 2nd adrs to your ascend address as assigned by ISP
+    RIP off
+    Proxy Mode off
+
+5) Filters:
+
+    You really only _care_ about data filters 
+    The IN/OUT designation is as viewed from the WAN interface
+
+    ISP IN Filters in order:
+       1) Drop incoming packets with a LOCAL source address
+       2) Drop un-established TCP incoming connections
+       3) Drop incoming PING (ICMP Echo) this requires TWO GENERIC filters
+       4) Drop incoming packets with source address as loopback (127.*)
+       5) Pass everything else
+    ISP OUT Filters:  
+       1) Drop all with Destination address 15.* 
+       1) Pass everything else
+
+    HP IN Filters:
+       1) Pass everything (trust the HP network)
+
+    HP OUT Filters:
+       1) Allow source address LOCAL net drop all others
+       2) Allow dest address 15.* drop all others
+
+
+    In Ethernet/Connection/<your ISP>/Session options.... 
+    enter a number between 1 and 4 in the Data Filter.
+    If you choose '1' then that corresponds to the Ethernet/Filters/20-401
+    filter.
+
+    You may want to put an OUT filter in the HP profile to filter anything
+    with a source address OTHER than your local HP subnet from getting
+    into the HP internet. Remember if you turn on an OUT filter, you need
+    an IN filter defined to at least pass all packets.
+
+
+That's pretty much it. Now you need to convince the Win-95 box to come 
+up on one of two address sets. I seem to recall reading in a recent
+INFO-WORLD about a shareware package for laptop owners that changes your
+IP config on the fly by jerking the registry. Might just work.
+
+-mike
+
+
+Here's a whole Ethernet frame:
+
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       Ethernet destination address (first 32 bits)            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   | Ethernet dest (last 16 bits)  |Ethernet source (first 16 bits)|
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       Ethernet source address (last 32 bits)                  |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |        Type code              |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  IP header, then TCP header, then your data                   |
+   |                                                               |
+        ...
+   |                                                               |
+   |   end of your data                                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Ethernet Checksum                       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+Here's an IP packet 
+ 
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |version|head_le|  TOS          |    Total Length               |   
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |       identification          |   flags and frag offset       |   
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     TTL       |    Protocol   |         Header Checksum       |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                       Source Address                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                    Destination Address                        |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |  TCP header, then your data ......
+ 
+
+
+My filter config:
+
+The default filter behavior is to FORWARD=NO. 
+
+The pipeline marches down the filter list until 
+it gets a FORWARD=NO, or it hits the last valid filter.
+
+A "MORE=YES" is like specifying an AND between the
+filters. 
+
+Generic filter offsets are from the beginning of the
+ETHERNET FRAME and are in bytes.  Useful offsets:
+   23  IP protocol
+   34  ICMP type
+   26  IP source address
+   30  IP dest address
+
+#
+# Filter for ISP wan profile
+START=FILT=200=0
+Name=Secure-ISP
+#
+# Disallow incoming IP packets with my local (HP) subnet
+# (source address spoofing)
+In filter 01...Valid=Yes
+In filter 01...Type=IP
+In filter 01...Generic...Length=65535
+In filter 01...Generic...Mask=0f0e884800000000
+In filter 01...Ip...Src Mask=255.255.255.248
+In filter 01...Ip...Src Adrs=15.14.136.72
+
+# Filter 2 & 3 are AND'd. First one is ICMP
+# second one is ECHO_REQUEST (Ping)
+In filter 02...Valid=Yes
+In filter 02...Generic...Offset=23
+In filter 02...Generic...Length=1
+In filter 02...Generic...Mask=ff00000000000000
+In filter 02...Generic...Value=0100000000000000
+In filter 02...Generic...More=Yes
+In filter 02...Ip...Src Mask=0.1.1.0
+In filter 02...Ip...Src Adrs=255.0.0.0
+In filter 02...Ip...Dst Adrs=1.0.0.0
+In filter 02...Ip...Protocol=23
+In filter 03...Valid=Yes
+In filter 03...Generic...Offset=34
+In filter 03...Generic...Length=2
+In filter 03...Generic...Mask=ffff000000000000
+In filter 03...Generic...Value=0800000000000000
+In filter 03...Ip...Src Mask=0.2.0.0
+In filter 03...Ip...Src Adrs=255.255.0.0
+In filter 03...Ip...Dst Adrs=8.0.0.0
+In filter 03...Ip...Protocol=34
+
+
+# Disallow packets from my local (ISP) net
+# (source address spoofing)
+In filter 04...Valid=Yes
+In filter 04...Type=IP
+In filter 04...Generic...Length=65535
+In filter 04...Generic...Mask=cd8ae50800000000
+In filter 04...Ip...Src Mask=255.255.255.248
+In filter 04...Ip...Src Adrs=205.138.229.8
+
+# Disallow incoming packets from loopback net
+# (source address spoofing)
+In filter 04...Valid=Yes
+In filter 04...Type=IP
+In filter 04...Generic...Length=65535
+In filter 04...Generic...Mask=cd8ae50800000000
+In filter 04...Ip...Src Mask=255.0.0.0
+In filter 04...Ip...Src Adrs=127.0.0.0
+
+#Pass all other packets
+In filter 12...Valid=Yes
+In filter 12...Generic...Forward=Yes
+In filter 12...Ip...Forward=Yes
+In filter 12...Ipx...Forward=Yes
+
+#Pass everything outbound
+Out filter 01...Valid=Yes
+Out filter 01...Generic...Forward=Yes
+Out filter 01...Ip...Forward=Yes
+Out filter 01...Ipx...Forward=Yes
+END=FILT=200=0
+
+#Filter for HP wan profile
+#
+START=FILT=200=1
+Name=Secure-HP
+
+#Pass everything inbound
+In filter 12...Valid=Yes
+In filter 12...Generic...Forward=Yes
+In filter 12...Ip...Forward=Yes
+In filter 12...Ipx...Forward=Yes
+
+#Pass outbound if source is my local (HP) subnet
+Out filter 01...Valid=Yes
+Out filter 01...Type=IP
+Out filter 01...Generic...Forward=Yes
+Out filter 01...Generic...Length=65535
+Out filter 01...Generic...Mask=0f0e884800000000
+Out filter 01...Ip...Forward=Yes
+Out filter 01...Ip...Src Mask=255.255.255.248
+Out filter 01...Ip...Src Adrs=15.14.136.72
+Out filter 01...Ipx...Forward=Yes
+
+# Do not pass any other type of outbound packet to HP
+Out filter 12...Valid=Yes
+
+END=FILT=200=1
+
+
+--------------------------------------------------------------------
+
+			  Protecting the MAX
+
+A good measure of protection for the MAX would be to allow only 
+15.* connections to it's ethernet port. Unfortunately, the Ascend
+filter profile doesn't have a not equal compare on addresses in IP
+mode. So we need a generic filter.
+
+IN Filter:
+   1) pass everything (ethernet->ascend)
+
+Out Filter:
+   #IP source adddress != 15.* ? Drop : Pass
+   1) generic, forward=NO, offset=26, length=1, mask=ff00000000000000,
+         value=0f00000000000000, compare=not equal
+
+   2) pass everything
+
+
