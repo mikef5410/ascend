@@ -1,0 +1,91 @@
+#!/usr/local/bin/perl
+
+use SNMP 1.6;
+use Tk;
+
+# %tinfo:  the Timer Information hash.
+#
+# Key       Contents
+#
+# w         Reference to MainWindow.
+# s         Accumulated seconds.
+# h         Accumulated hundredths of a second.
+# p         1 IIF paused.
+# t         Value of $counter -textvariable.
+
+
+$host=shift(@ARGV);
+#try passwd of "publicdog", and "writedog" on HP routers
+if (!defined($pwd=shift(@ARGV))) {
+    $pwd="public";
+}
+
+$ENV{'MIBDIRS'}="/usr/local/lib/snmp/mibs:/usr/local/lib/snmp/mibs/ascend";
+$ENV{'MIBS'}="ALL";
+
+$session = new SNMP::Session (DestHost => $host, Version => 1,  Community => $pwd);
+#$root = ".iso.org.dod.internet.mgmt.mib.";
+
+$name = $session->get("sysDescr.0");
+$calls = $session->get ( ['callStatusMaximumEntries','0']);
+
+#print "$name\n";
+
+$MW = MainWindow->new;
+$MW->title('Ascend Status');
+$FONT = '-*-Helvetica-Medium-R-Normal--*-140-*-*-*-*-*-*';
+$w=$MW;
+my(%tinfo) = ('w' => $MW, 's' => 0, 'h' => 0, 'p' => 0, 't' => '0.00');
+
+get_info();
+make_buts();
+
+MainLoop();
+
+exit;
+
+sub get_info {
+$i=0;
+$name[0]=""; $nch[0]="";
+$name[1]=""; $nch[1]="";
+for ($j=0; $j<=99; $j++) {
+  $id = $session->get("mppStatsMpID.$j");
+  if ($id) {
+    $name[$i]=$session->get("mppStatsRemoteName.$j");
+    $nch[$i] = $session->get("mppStatsTotalChannels.$j");
+    $i++;
+  }
+}
+#print "$i\n";
+$l1="$name[0] $nch[0]";
+$l2="$name[1] $nch[1]";
+$tinfo{'w'}->after(5000,\&get_info);
+return;
+}
+
+sub make_buts {
+$w_buttons = $w->Frame;
+
+$w_buttons->pack(qw(-side bottom -fill x -pady 2m));
+$w_1 = $w_buttons->Label(
+    -relief    => 'raised',
+    -width     => 10,
+    -textvariable => \$l1,
+);
+$w_1->pack(qw(-side left -expand 1));
+
+$w_2 = $w_buttons->Label(
+    -relief    => 'raised',
+    -width     => 10,
+    -textvariable => \$l2,
+);
+$w_2->pack(qw(-side left -expand 1));
+return;
+}
+
+sub del_buts {
+  $w_1->destroy();
+  $w_2->destroy();
+  $w_buttons->destroy();
+}
+
