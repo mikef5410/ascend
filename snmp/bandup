@@ -1,0 +1,46 @@
+#!/usr/local/bin/perl
+#
+# Use SNMP to cause an ascend box to tftp transfer its configuration
+# to a save host.
+#
+# Uses these MIB entries:
+#
+#enterprises.ascend.systemStatusGroup.sysConfigTftp.sysConfigTftpCmd.0 = save(1)
+#enterprises.ascend.systemStatusGroup.sysConfigTftp.sysConfigTftpStatus.0 = 1
+#enterprises.ascend.systemStatusGroup.sysConfigTftp.sysConfigTftpHostAddr.0 = IpAddress: 0.0.0.0
+#enterprises.ascend.systemStatusGroup.sysConfigTftp.sysConfigTftpFilename.0 = ""
+#
+# numeric equiv: .1.3.6.1.4.1.529.9.5
+
+$root = ".iso.org.dod.internet.private";
+#$tftp = "enterprises.ascend.systemStatusGroup.sysConfigTftp";
+$dogrp = "enterprises.ascend.doGroup.doTable.doEntry";
+
+use SNMP 1.6;
+
+$ENV{'MIBDIRS'}="/usr/local/lib/snmp/mibs:/usr/local/lib/snmp/mibs/ascend";
+$ENV{'MIBS'}="ALL";
+
+$host=shift(@ARGV); # first arg is ascend box
+$pwd=shift(@ARGV);  # 2nd arg is (R/W) community name
+
+$savehost="rtfm";
+
+if ($savehost =~ /^\s*((\d+\.){3}\d+)\s*$/)
+   { $ip = pack ('C4', split (/\./, $1)) }
+else
+   { $ip = (gethostbyname($savehost))[4] }
+
+return 0 unless $ip;		# "no such host"
+
+$ip=unpack("N",$ip); #get back to an integer
+
+
+#Now the nitty gritty
+$session = new SNMP::Session (DestHost => $host, Version => 1,  Community => $pwd);
+
+#setup the tftp target params
+#$new=$session->get(['doSlotIndex',1]);
+#print("Get returns $new\n");
+$new=$session->set(['doHangUp','1','1']);
+

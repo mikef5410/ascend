@@ -1,0 +1,94 @@
+#!/usr/local/bin/perl
+
+use SNMP 1.6;
+
+$host=shift(@ARGV);
+if (!defined($pwd=shift(@ARGV))) {
+    $pwd="public";
+}
+
+$ENV{'MIBDIRS'}="/usr/local/lib/snmp/mibs:/usr/local/lib/snmp/mibs/ascend";
+$ENV{'MIBS'}="ALL";
+
+$session = new SNMP::Session (DestHost => $host, Version => 1,  Community => $pwd);
+#$root = ".iso.org.dod.internet.mgmt.mib.";
+
+$name = $session->get("sysDescr.0");
+$calls = $session->get ( ['callStatusMaximumEntries','0']);
+
+print "$name\n";
+
+for ($j=1; $j<=$calls; $j++) {
+	$valid=($session->get("callStatusValidFlag.$j")==2);
+	if ($valid) {
+	    $cref=$session->get("callStatusCallReferenceNum.$j");
+	    $datarate{$cref}=$session->get("callStatusDataRate.$j");
+	    $slot{$cref}=$session->get("callStatusSlotNumber.$j");
+	    $line{$cref}=$session->get("callStatusSlotLineNumber.$j");
+	    $channel{$cref}=$session->get("callStatusSlotChannelNumber.$j");
+	    $ifix{$cref}=$session->get("callStatusIfIndex.$j");
+	    $ifname{$cref}=$session->get("ifDescr.$ifix{$cref}");
+	    $uptime{$cref}=$session->get("sysSecsSinceStartup.0") - $session->get("callStatusStartingTimeStamp.$j");
+	}
+#	print("Interface $j: $admin $spd\n");
+    }
+$ssns = $session->get("ssnStatusMaximumSessions.0");
+for ($j=1; $j<=$ssns; $j++) {
+    $valid=($session->get("ssnStatusValidFlag.$j")==2);
+    if ($valid) {
+	$user=$session->get("ssnStatusUserName.$j");
+	$num{$user}++;
+	$user="$user/$num{$user}";
+	$ip{$user}=$session->get("ssnStatusUserIPAddress.$j");
+	$mask{$user}=$session->get("ssnStatusUserSubnetMask.$j");
+	$service{$user}=$session->get("ssnStatusCurrentService.$j");
+	$callref{$user}=$session->get("ssnStatusCallReferenceNum.$j");
+    }
+}
+
+format STDOUT_TOP =
+
+ User       Interface   Service   Data Rate   Uptime (Sec)   SLOT/LINE/Channel
+----------  ---------   -------   ---------   ------------   -----------------
+.
+
+format STDOUT =
+@<<<<<<<<<  @<<<<<<<<   @<<<<<<   @<<<<<<<<   @<<<<<<<<<<<   @<<<</@<<</@<<
+$user, $interface, $svc, $rate, $upt, $slt, $lin, $chn
+.
+
+    foreach $user (sort(keys(%ip))) {
+	$interface=$ifname{$callref{$user}};
+	$svc=$service{$user};
+	$rate=$datarate{$callref{$user}};
+	$slt=$slot{$callref{$user}};
+	$lin=$line{$callref{$user}};
+	$chn=$channel{$callref{$user}};
+	$upt=sectohms($uptime{$callref{$user}});
+	write STDOUT;
+    }
+
+
+sub sectohms {
+    local ($secs)=@_;
+
+    $d = int($secs/86400);
+    $secs=$secs-(86400*$d);
+    $hrs = int($secs/3600);
+    $secs=$secs-(3600*$hrs);
+    $min = int($secs/60);
+    $s = $secs % 60;
+
+    if ($d > 0) {
+	$ret=sprintf("%dd %.2d:%.2d:%.2d",$d,$hrs,$min,$s);
+    } else {
+	$ret=sprintf("%.2d:%.2d:%.2d",$hrs,$min,$s);
+    }
+    return($ret);
+}
+
+	
+
+
+	
+	
