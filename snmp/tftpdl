@@ -54,9 +54,14 @@ $new=$session->set("sysConfigTftpFilename.0","$savefile");
 #   loadCode( 6 )       -- load a code image              
 
 
-#$new=$session->set("sysConfigTftpCmd.0",0x3); #start the save ALL
-$new=$session->set("sysConfigTftpCmd.0",0x1); #start the save config
+$new=$session->set("sysConfigTftpCmd.0",0x3); #start the save ALL
 $new=$session->get("sysConfigTftpStatus.0");  #wait till complete
+
+if ( -z "$savefile"  ) {
+  print("Full save failed, trying a regular save.\n");
+  $new=$session->set("sysConfigTftpCmd.0",0x1); #start the save config
+  $new=$session->get("sysConfigTftpStatus.0");  #wait till complete
+}
 
 #just to be nice, reset them to "clean" values
 $new=$session->set("sysConfigTftpHostAddr.0",0); 
