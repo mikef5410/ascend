@@ -26,6 +26,8 @@ $pwd=shift(@ARGV);  # 2nd arg is (R/W) community name
 $savehost="rtfm";
 $savefile="/export/tftpboot/ascend/$host";
 
+$pwd="write" if ($pwd eq "");
+
 if ($savehost =~ /^\s*((\d+\.){3}\d+)\s*$/)
    { $ip = pack ('C4', split (/\./, $1)) }
 else
@@ -38,6 +40,7 @@ $ip=unpack("N",$ip); #get back to an integer
 #"touch" the save file. tftpd will not create it
 open(FILE,">$savefile");
 close(FILE);
+chmod(0666,$savefile);
 
 #Now the nitty gritty
 $session = new SNMP::Session (DestHost => $host, Version => 1,  Community => $pwd);
@@ -63,7 +66,7 @@ if ( -z "$savefile"  ) {
   $new=$session->get("sysConfigTftpStatus.0");  #wait till complete
 }
 
- #just to be nice, reset them to "clean" values
+#just to be nice, reset them to "clean" values
 $new=$session->set("sysConfigTftpHostAddr.0",0); 
 $new=$session->set("sysConfigTftpFilename.0","");
 $new=$session->set("sysConfigTftpCmd.0",0x1);

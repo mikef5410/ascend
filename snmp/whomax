@@ -3,6 +3,7 @@
 use SNMP 1.6;
 
 $host=shift(@ARGV);
+#try passwd of "publicdog", and "writedog" on HP routers
 if (!defined($pwd=shift(@ARGV))) {
     $pwd="public";
 }
