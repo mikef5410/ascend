@@ -63,7 +63,7 @@ if ( -z "$savefile"  ) {
   $new=$session->get("sysConfigTftpStatus.0");  #wait till complete
 }
 
-#just to be nice, reset them to "clean" values
+ #just to be nice, reset them to "clean" values
 $new=$session->set("sysConfigTftpHostAddr.0",0); 
 $new=$session->set("sysConfigTftpFilename.0","");
 $new=$session->set("sysConfigTftpCmd.0",0x1);
